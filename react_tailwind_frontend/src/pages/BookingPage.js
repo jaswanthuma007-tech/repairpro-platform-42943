@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { useLocation } from "react-router-dom";
 import PageLayout from "../components/PageLayout";
 import BookingStepper from "../components/BookingStepper";
 import { useAuth } from "../contexts/AuthContext";
@@ -25,6 +26,7 @@ function toUserFacingFetchError(err) {
 export default function BookingPage() {
   /** Samsung-style stepper-driven booking flow with backend catalog + Supabase insert. */
   const { accessToken, user } = useAuth();
+  const location = useLocation();
 
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -78,6 +80,22 @@ export default function BookingPage() {
       mounted = false;
     };
   }, [accessToken]);
+
+  // Preselect brand from URL (?brand=Samsung) once brands are available.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const brandFromUrl = (params.get("brand") || "").trim();
+    if (!brandFromUrl) return;
+    if (!brands?.length) return;
+
+    // Case-insensitive match against catalog brand names.
+    const match = brands.find((b) => (b?.name || "").toLowerCase() === brandFromUrl.toLowerCase());
+    if (!match) return;
+
+    setBrandId(match.id);
+    // If user arrived from Home brand cards, proceed to next step automatically.
+    setStepIndex((prev) => (prev === 0 ? 1 : prev));
+  }, [location.search, brands]);
 
   // Load models when brand changes
   useEffect(() => {

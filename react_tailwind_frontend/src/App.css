@@ -1,1 +1,10 @@
 /* Intentionally minimal: UI is Tailwind-driven. Keep for CRA compatibility. */
+
+/* Samsung-style horizontal scroller helper (keeps mobile slider clean) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}

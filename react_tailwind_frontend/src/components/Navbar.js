@@ -85,15 +85,15 @@ export default function Navbar() {
     <>
       <header className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
         <div className="mx-auto max-w-6xl px-4">
-          {/* Grid prevents search/menu overlap while keeping true centered menu on desktop */}
-          <div className="grid h-16 grid-cols-[auto_1fr_auto] items-center gap-3">
+          {/* Flex row w/ min-width rules to prevent overlap/wrapping and keep a Samsung-like single-line header */}
+          <div className="flex h-16 items-center justify-between gap-3">
             {/* Left */}
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
                 aria-label="Open menu"
                 onClick={() => navigate("/")}
-                className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 transition"
+                className="lg:hidden inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 transition"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path
@@ -105,36 +105,42 @@ export default function Navbar() {
                 </svg>
               </button>
 
-              <Link to="/" className="font-semibold tracking-tight text-gray-900">
+              <Link
+                to="/"
+                className="shrink-0 font-semibold tracking-tight text-gray-900 whitespace-nowrap"
+              >
                 MobileRepair
               </Link>
             </div>
 
-            {/* Center menu (Samsung-like) */}
-            <nav className="hidden lg:flex items-center justify-center gap-7 text-sm text-gray-700">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    clsx(
-                      "relative py-2 hover:text-gray-900 transition",
-                      "after:absolute after:left-0 after:bottom-1 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-gray-900 after:transition-transform after:duration-200 hover:after:scale-x-100",
-                      isActive && "text-gray-900 after:scale-x-100"
-                    )
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
+            {/* Center menu (single-line, no wrap/overlap) */}
+            <nav className="hidden lg:flex min-w-0 flex-1 items-center justify-center">
+              <ul className="flex min-w-0 flex-nowrap items-center gap-7 text-sm text-gray-700">
+                {navItems.map((item) => (
+                  <li key={item.to} className="shrink-0">
+                    <NavLink
+                      to={item.to}
+                      className={({ isActive }) =>
+                        clsx(
+                          "relative block py-2 leading-none whitespace-nowrap hover:text-gray-900 transition",
+                          "after:absolute after:left-0 after:bottom-1 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-gray-900 after:transition-transform after:duration-200 hover:after:scale-x-100",
+                          isActive && "text-gray-900 after:scale-x-100"
+                        )
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
             </nav>
 
-            {/* Right */}
-            <div className="flex items-center gap-1">
+            {/* Right (baseline aligned controls) */}
+            <div className="flex shrink-0 items-center gap-1">
               {/* Desktop search (right-side pill) */}
               <div className="hidden lg:block mr-1">
                 <div className="w-[320px]">
-                  <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 transition">
+                  <div className="flex h-10 items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-4 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 transition">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path
                         d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
@@ -150,7 +156,7 @@ export default function Navbar() {
                     </svg>
                     <input
                       placeholder="Search"
-                      className="w-full bg-transparent text-sm outline-none"
+                      className="w-full bg-transparent text-sm leading-none outline-none"
                     />
                   </div>
                 </div>
@@ -214,7 +220,7 @@ export default function Navbar() {
 
               <Link
                 to="/book"
-                className="ml-2 hidden sm:inline-flex items-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 active:bg-blue-800 transition"
+                className="ml-2 hidden sm:inline-flex h-10 items-center rounded-full bg-blue-600 px-4 text-sm font-semibold leading-none text-white shadow hover:bg-blue-700 active:bg-blue-800 transition whitespace-nowrap"
               >
                 Book Repair
               </Link>
@@ -223,7 +229,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={signOut}
-                  className="ml-2 hidden sm:inline-flex items-center rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition"
+                  className="ml-2 hidden sm:inline-flex h-10 items-center rounded-full border border-gray-200 bg-white px-4 text-sm font-semibold leading-none text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition whitespace-nowrap"
                 >
                   Sign out
                 </button>

@@ -69,31 +69,23 @@ function SearchModal({ open, onClose }) {
   );
 }
 
-function DesktopSearchPill() {
+function DesktopSearchButton({ onOpen }) {
   return (
-    // Fixed visual footprint that can still shrink if absolutely needed (min-w-0 on parent).
-    <div className="w-full max-w-[380px]">
-      <div className="flex h-11 items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-4 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 transition">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-            stroke="#6B7280"
-            strokeWidth="2"
-          />
-          <path
-            d="M16 16l5 5"
-            stroke="#6B7280"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
-
-        <input
-          placeholder="Search"
-          className="min-w-0 w-full bg-transparent text-sm leading-none outline-none"
+    <IconButton label="Open search" onClick={onOpen}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+          stroke="#111827"
+          strokeWidth="2"
         />
-      </div>
-    </div>
+        <path
+          d="M16 16l5 5"
+          stroke="#111827"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    </IconButton>
   );
 }
 
@@ -102,7 +94,7 @@ export default function Navbar() {
   /** Top sticky Samsung-style navigation with 3-section flex layout, centered desktop search, and mobile modal search. */
   const { session, role, signOut } = useAuth();
   const navigate = useNavigate();
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const accountLabel = useMemo(() => {
     if (!session) return "Account";
@@ -166,16 +158,16 @@ export default function Navbar() {
               </nav>
             </div>
 
-            {/* CENTER: centered search. It has its own column and will not overlap left labels. */}
+            {/* CENTER: reserved column (prevents overlap) with desktop search icon */}
             <div className="hidden lg:flex min-w-0 flex-[0_0_420px] items-center justify-center">
-              <DesktopSearchPill />
+              <DesktopSearchButton onOpen={() => setSearchOpen(true)} />
             </div>
 
             {/* RIGHT: icons + CTAs (never wrap; shrink-0) */}
             <div className="flex shrink-0 items-center gap-1">
-              {/* Mobile search icon (opens modal); desktop has pill in center */}
+              {/* Mobile search icon (opens same modal); desktop icon lives in center */}
               <div className="lg:hidden">
-                <IconButton label="Open search" onClick={() => setMobileSearchOpen(true)}>
+                <IconButton label="Open search" onClick={() => setSearchOpen(true)}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path
                       d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
@@ -250,7 +242,7 @@ export default function Navbar() {
         </div>
       </header>
 
-      <SearchModal open={mobileSearchOpen} onClose={() => setMobileSearchOpen(false)} />
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }

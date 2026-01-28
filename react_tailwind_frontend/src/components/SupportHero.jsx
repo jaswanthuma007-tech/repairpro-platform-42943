@@ -26,8 +26,8 @@ export default function SupportHero() {
               {/* Left: Image */}
               <div className="relative h-[220px] sm:h-[280px] md:h-full md:min-h-[340px]">
                 <img
-                  src="/assets/support-hero.jpg"
-                  alt="Customer support staff helping customers with a tablet"
+                  src="/assets/support-hero.png"
+                  alt="Get Support demo"
                   className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
                 />

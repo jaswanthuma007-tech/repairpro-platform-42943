@@ -31,16 +31,16 @@ a {
 /* Subtle zoom-in animation for the Home hero background image (optional enhancement). */
 @keyframes heroKenBurns {
   0% {
-    transform: scale(1.08);
+    transform: scale(1.06);
   }
   100% {
-    transform: scale(1.16);
+    transform: scale(1.12);
   }
 }
 
 .hero-kenburns {
   /* Keep subtle and slow to match a premium Samsung-like feel */
-  animation: heroKenBurns 18s ease-out forwards;
+  animation: heroKenBurns 22s ease-out forwards;
   will-change: transform;
 }
 

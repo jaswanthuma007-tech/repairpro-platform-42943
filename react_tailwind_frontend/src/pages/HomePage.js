@@ -80,17 +80,23 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         {/* Background image (blurred) */}
         <div
-          className="absolute inset-0 bg-center bg-cover blur-sm hero-kenburns"
+          className="absolute inset-0 hero-kenburns"
           style={{
-            // Samsung-style service center / technician repairing smartphone image (local asset)
-            backgroundImage: "url(/assets/hero-service-center.jpg)"
+            // High-resolution Samsung-style service center image (local asset)
+            backgroundImage: "url(/assets/hero-service-center.jpg)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+            // Keep blur subtle so the service-center interior still reads (premium look).
+            filter: "blur(2px)",
+            transform: "scale(1.06)"
           }}
           aria-hidden="true"
         />
 
         {/* Dark gradient overlay (Samsung-like) */}
         <div
-          className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-black/75"
+          className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/45 to-black/70"
           aria-hidden="true"
         />
 

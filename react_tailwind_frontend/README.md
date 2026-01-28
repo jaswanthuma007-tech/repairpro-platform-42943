@@ -1,13 +1,29 @@
-# Lightweight React Template for KAVIA
+# MobileRepair / RepairPro Frontend (React + Tailwind)
 
-This project provides a minimal React template with a clean, modern UI and minimal dependencies.
+Samsung-style Mobile Service Center web app with Supabase Auth + Realtime and a FastAPI backend.
 
-## Features
+## Integration wiring (required)
 
-- **Lightweight**: No heavy UI frameworks - uses only vanilla CSS and React
-- **Modern UI**: Clean, responsive design with KAVIA brand styling
-- **Fast**: Minimal dependencies for quick loading times
-- **Simple**: Easy to understand and modify
+This frontend depends on:
+
+### 1) Supabase (Auth + Realtime)
+Set:
+- `REACT_APP_SUPABASE_URL` (Supabase project URL)
+- `REACT_APP_SUPABASE_KEY` (Supabase anon key)
+
+### 2) FastAPI backend base URL
+Set one of:
+- `REACT_APP_API_BASE` (preferred), e.g. `https://<your-backend>/` (no trailing slash required)
+- `REACT_APP_BACKEND_URL` (fallback)
+
+The frontend sends `Authorization: Bearer <access_token>` to the backend using the Supabase session token.
+
+### 3) Frontend URL (for auth email redirects)
+Set:
+- `REACT_APP_FRONTEND_URL` (recommended in production)
+
+Used for:
+- `emailRedirectTo` during sign-up and magic-link login.
 
 ## Getting Started
 

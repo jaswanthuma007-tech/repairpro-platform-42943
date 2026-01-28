@@ -83,61 +83,83 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
         <div className="mx-auto max-w-6xl px-4">
-          <div className="flex h-16 items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
+          {/* Grid prevents search/menu overlap while keeping true centered menu on desktop */}
+          <div className="grid h-16 grid-cols-[auto_1fr_auto] items-center gap-3">
+            {/* Left */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                aria-label="Open menu"
+                onClick={() => navigate("/")}
+                className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 transition"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M4 7h16M4 12h16M4 17h16"
+                    stroke="#111827"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+
               <Link to="/" className="font-semibold tracking-tight text-gray-900">
                 MobileRepair
               </Link>
-
-              <nav className="hidden lg:flex items-center gap-6 text-sm text-gray-700">
-                {navItems.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    className={({ isActive }) =>
-                      clsx(
-                        "relative py-2 hover:text-gray-900 transition",
-                        "after:absolute after:left-0 after:bottom-1 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-gray-900 after:transition-transform after:duration-200 hover:after:scale-x-100",
-                        isActive && "text-gray-900 after:scale-x-100"
-                      )
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                ))}
-              </nav>
             </div>
 
-            <div className="hidden md:flex flex-1 justify-center px-4">
-              <div className="w-full max-w-xl">
-                <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 transition">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-                      stroke="#6B7280"
-                      strokeWidth="2"
+            {/* Center menu (Samsung-like) */}
+            <nav className="hidden lg:flex items-center justify-center gap-7 text-sm text-gray-700">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    clsx(
+                      "relative py-2 hover:text-gray-900 transition",
+                      "after:absolute after:left-0 after:bottom-1 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-gray-900 after:transition-transform after:duration-200 hover:after:scale-x-100",
+                      isActive && "text-gray-900 after:scale-x-100"
+                    )
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* Right */}
+            <div className="flex items-center gap-1">
+              {/* Desktop search (right-side pill) */}
+              <div className="hidden lg:block mr-1">
+                <div className="w-[320px]">
+                  <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 transition">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                        stroke="#6B7280"
+                        strokeWidth="2"
+                      />
+                      <path
+                        d="M16 16l5 5"
+                        stroke="#6B7280"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <input
+                      placeholder="Search"
+                      className="w-full bg-transparent text-sm outline-none"
                     />
-                    <path
-                      d="M16 16l5 5"
-                      stroke="#6B7280"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <input
-                    placeholder="Search products, services, repairs..."
-                    className="w-full bg-transparent text-sm outline-none"
-                  />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-1">
-              <div className="md:hidden">
+              {/* Mobile search icon (opens modal) */}
+              <div className="lg:hidden">
                 <IconButton label="Open search" onClick={() => setMobileSearchOpen(true)}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path
                       d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
                       stroke="#111827"
@@ -154,7 +176,7 @@ export default function Navbar() {
               </div>
 
               <IconButton label="Cart" onClick={() => navigate("/cart")}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path
                     d="M6 6h15l-1.5 9h-12L6 6Z"
                     stroke="#111827"
@@ -175,7 +197,7 @@ export default function Navbar() {
               </IconButton>
 
               <IconButton label={accountLabel} onClick={() => navigate("/dashboard")}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path
                     d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
                     stroke="#111827"

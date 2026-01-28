@@ -2,12 +2,15 @@ import React from "react";
 import Navbar from "./Navbar";
 
 // PUBLIC_INTERFACE
-export default function PageLayout({ children }) {
-  /** Standard page layout with top navbar and consistent max-width. */
+export default function PageLayout({ children, variant = "contained" }) {
+  /** Standard page layout with top navbar and consistent max-width, with optional full-bleed variant. */
+  const mainClassName =
+    variant === "fullBleed" ? "w-full" : "mx-auto max-w-6xl px-4 py-10";
+
   return (
     <div className="min-h-screen bg-brand-background">
       <Navbar />
-      <main className="mx-auto max-w-6xl px-4 py-10">{children}</main>
+      <main className={mainClassName}>{children}</main>
     </div>
   );
 }

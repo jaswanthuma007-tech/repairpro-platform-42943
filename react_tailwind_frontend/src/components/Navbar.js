@@ -70,7 +70,8 @@ function SearchModal({ open, onClose }) {
 
 function DesktopSearchPill() {
   return (
-    <div className="w-full max-w-[420px]">
+    // Fixed visual footprint that can still shrink if absolutely needed (min-w-0 on parent).
+    <div className="w-full max-w-[380px]">
       <div className="flex h-11 items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-4 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 transition">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
@@ -97,7 +98,7 @@ function DesktopSearchPill() {
 
 // PUBLIC_INTERFACE
 export default function Navbar() {
-  /** Top sticky Samsung-style navigation with centered desktop search and mobile modal search. */
+  /** Top sticky Samsung-style navigation with 3-section flex layout, centered desktop search, and mobile modal search. */
   const { session, role, signOut } = useAuth();
   const navigate = useNavigate();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -113,10 +114,11 @@ export default function Navbar() {
     <>
       <header className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
         <div className="mx-auto max-w-6xl px-4">
-          {/* Single-line header: left / center / right. All vertically aligned (items-center). */}
-          <div className="flex h-16 items-center justify-between gap-3">
-            {/* Left: mobile menu + logo */}
-            <div className="flex min-w-0 shrink-0 items-center gap-3">
+          {/* 3-section layout: Left (logo+menu) / Center (search) / Right (actions) */}
+          <div className="flex h-16 items-center gap-4">
+            {/* LEFT: logo + desktop nav (single line, no wrapping) */}
+            <div className="flex min-w-0 flex-1 items-center gap-6">
+              {/* Mobile menu icon (kept for parity; can later open drawer) */}
               <button
                 type="button"
                 aria-label="Open menu"
@@ -139,12 +141,8 @@ export default function Navbar() {
               >
                 MobileRepair
               </Link>
-            </div>
 
-            {/* Center: (desktop) menu + centered pill search. Both collapse gracefully via min-w-0. */}
-            <div className="hidden lg:flex min-w-0 flex-1 items-center justify-center gap-6">
-              {/* Menu: single line, no wrapping */}
-              <nav className="min-w-0">
+              <nav className="hidden lg:block min-w-0">
                 <ul className="flex min-w-0 flex-nowrap items-center gap-7 text-sm text-gray-700">
                   {navItems.map((item) => (
                     <li key={item.to} className="shrink-0">
@@ -153,6 +151,7 @@ export default function Navbar() {
                         className={({ isActive }) =>
                           clsx(
                             "relative block py-2 leading-none whitespace-nowrap hover:text-gray-900 transition",
+                            // Underline stays aligned under text regardless of container widths.
                             "after:absolute after:left-0 after:bottom-1 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-gray-900 after:transition-transform after:duration-200 hover:after:scale-x-100",
                             isActive && "text-gray-900 after:scale-x-100"
                           )
@@ -164,16 +163,16 @@ export default function Navbar() {
                   ))}
                 </ul>
               </nav>
-
-              {/* Search: fixed-ish max width, but allowed to shrink without overlapping */}
-              <div className="min-w-0 flex items-center justify-center">
-                <DesktopSearchPill />
-              </div>
             </div>
 
-            {/* Right: icons + CTAs (never wrap; shrink-0). */}
+            {/* CENTER: centered search. It has its own column and will not overlap left labels. */}
+            <div className="hidden lg:flex min-w-0 flex-[0_0_420px] items-center justify-center">
+              <DesktopSearchPill />
+            </div>
+
+            {/* RIGHT: icons + CTAs (never wrap; shrink-0) */}
             <div className="flex shrink-0 items-center gap-1">
-              {/* Mobile search icon (opens modal) */}
+              {/* Mobile search icon (opens modal); desktop has pill in center */}
               <div className="lg:hidden">
                 <IconButton label="Open search" onClick={() => setMobileSearchOpen(true)}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -215,7 +214,11 @@ export default function Navbar() {
 
               <IconButton label={accountLabel} onClick={() => navigate("/dashboard")}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="#111827" strokeWidth="2" />
+                  <path
+                    d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
+                    stroke="#111827"
+                    strokeWidth="2"
+                  />
                   <path
                     d="M4 20a8 8 0 0 1 16 0"
                     stroke="#111827"

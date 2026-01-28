@@ -31,15 +31,30 @@ function App() {
           <Route path="/cart" element={<PlaceholderPage title="Cart" subtitle="Coming soon." />} />
 
           <Route element={<ProtectedRoute />}>
+            {/*
+              Canonical post-login router: role -> correct dashboard.
+              (Backwards-compatible: old routes are still defined below.)
+            */}
             <Route path="/dashboard" element={<DashboardRouter />} />
+
             <Route path="/book" element={<BookingPage />} />
 
-            <Route path="/my" element={<CustomerDashboard />} />
+            {/* Canonical dashboard paths (authoritative requirement) */}
+            <Route path="/customer-dashboard" element={<CustomerDashboard />} />
 
+            <Route element={<RoleRoute allowedRoles={["technician", "admin"]} />}>
+              <Route path="/technician-dashboard" element={<TechnicianDashboard />} />
+            </Route>
+
+            <Route element={<RoleRoute allowedRoles={["admin"]} />}>
+              <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            </Route>
+
+            {/* Legacy paths (keep working) */}
+            <Route path="/my" element={<CustomerDashboard />} />
             <Route element={<RoleRoute allowedRoles={["technician", "admin"]} />}>
               <Route path="/tech" element={<TechnicianDashboard />} />
             </Route>
-
             <Route element={<RoleRoute allowedRoles={["admin"]} />}>
               <Route path="/admin" element={<AdminDashboard />} />
             </Route>

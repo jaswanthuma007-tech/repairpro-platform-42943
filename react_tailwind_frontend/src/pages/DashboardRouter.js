@@ -7,7 +7,8 @@ export default function DashboardRouter() {
   /** Redirects to the correct dashboard based on role. */
   const { role } = useAuth();
 
-  if (role === "admin") return <Navigate to="/admin" replace />;
-  if (role === "technician") return <Navigate to="/tech" replace />;
-  return <Navigate to="/my" replace />;
+  // Canonical dashboard routes (per requirements).
+  if (role === "admin") return <Navigate to="/admin-dashboard" replace />;
+  if (role === "technician") return <Navigate to="/technician-dashboard" replace />;
+  return <Navigate to="/customer-dashboard" replace />;
 }

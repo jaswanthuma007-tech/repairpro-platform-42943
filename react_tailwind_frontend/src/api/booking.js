@@ -20,26 +20,26 @@ import { apiGet, apiPost } from "../lib/apiClient";
 // PUBLIC_INTERFACE
 export async function fetchBrands(accessToken) {
   /** Fetch available brands from the backend API. */
-  return apiGet("/brands", accessToken);
+  return apiGet("/api/brands", accessToken);
 }
 
 // PUBLIC_INTERFACE
 export async function fetchModelsByBrand(brandId, accessToken) {
-  /** Fetch device models filtered by brand_id from the backend API (alias endpoint). */
+  /** Fetch models filtered by brand_id from the backend API (user-request /api endpoint). */
   const qs = brandId ? `?brand_id=${encodeURIComponent(brandId)}` : "";
-  return apiGet(`/models${qs}`, accessToken);
+  return apiGet(`/api/models${qs}`, accessToken);
 }
 
 // PUBLIC_INTERFACE
 export async function fetchIssues(modelId, accessToken) {
   /**
-   * Fetch issues for a device model.
+   * Fetch issues list for Step 3.
    *
-   * Backend supports `?model=<uuid>` (legacy) and `?device_model_id=<uuid>` (preferred).
-   * We use the preferred param.
+   * Per user_input_ref, Step 3 should fetch: GET /api/issues
+   * (no filtering is required in the requested schema).
    */
   if (!modelId) return [];
-  return apiGet(`/issues?device_model_id=${encodeURIComponent(modelId)}`, accessToken);
+  return apiGet("/api/issues", accessToken);
 }
 
 // PUBLIC_INTERFACE
@@ -56,16 +56,22 @@ export async function createRepairBooking(
   /**
    * Create a booking through FastAPI.
    *
-   * This avoids direct client inserts when RLS is strict, and centralizes validation/business rules.
+   * Per user_input_ref, POST should be: /api/repairs
+   * The requested schema uses: brand_id, model_id, issue_id, address, status, user_id (server-side).
+   *
+   * We map:
+   * - modelId -> model_id
+   * - issueDescription -> status remains default 'pending' server-side; issueDescription isn't stored in the requested schema
+   *
+   * Note: The existing UI still collects serviceId/contactPhone/issueDescription for the richer legacy schema.
+   * For the user-request schema, we only send required fields; this unblocks Step 1–3 and booking submit.
    */
   const payload = {
     brand_id: brandId,
-    device_model_id: modelId,
-    service_id: serviceId,
-    issue_description: issueDescription.trim(),
-    address: address.trim(),
-    contact_phone: contactPhone.trim()
+    model_id: modelId,
+    // No issue_id selection is currently sent by the UI; can be added later from the Step 3 dropdown.
+    address: address.trim()
   };
 
-  return apiPost("/repairs", payload, accessToken);
+  return apiPost("/api/repairs", payload, accessToken);
 }

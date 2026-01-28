@@ -280,14 +280,14 @@ export default function BookingPage() {
 
                             const match = issues.find((x) => x.id === nextId);
                             // If user chooses a catalog issue, prefill the textarea (still editable).
-                            if (match?.title) setIssueDescription(match.title);
+                            if (match?.name) setIssueDescription(match.name);
                           }}
                           className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                         >
                           <option value="">Select issue…</option>
                           {issues.map((i) => (
                             <option key={i.id} value={i.id}>
-                              {i.title}
+                              {i.name}
                             </option>
                           ))}
                         </select>

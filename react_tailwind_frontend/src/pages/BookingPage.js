@@ -187,7 +187,12 @@ export default function BookingPage() {
               transition={{ duration: 0.25 }}
             >
               {stepIndex === 0 && (
-                <StepBrand brands={brands} brandId={brandId} onChangeBrandId={setBrandId} />
+                <StepBrand
+                  brands={brands}
+                  brandId={brandId}
+                  onChangeBrandId={setBrandId}
+                  onSelected={() => setStepIndex(1)}
+                />
               )}
 
               {stepIndex === 1 && (

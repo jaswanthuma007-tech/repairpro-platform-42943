@@ -22,7 +22,7 @@ function buildHeaders(accessToken) {
 function assertApiBase() {
   if (!API_BASE) {
     throw new Error(
-      "Backend API base URL is not configured. Set REACT_APP_API_BASE (preferred) or REACT_APP_BACKEND_URL."
+      "Backend API base URL is not configured. Set REACT_APP_API_BASE_URL (authoritative), or REACT_APP_API_BASE / REACT_APP_BACKEND_URL (legacy)."
     );
   }
 }

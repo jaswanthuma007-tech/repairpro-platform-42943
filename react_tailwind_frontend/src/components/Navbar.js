@@ -10,7 +10,8 @@ const navItems = [
   { to: "/category/tablets", label: "Tablets" },
   { to: "/category/tv", label: "TV & Smart Home" },
   { to: "/category/wearables", label: "Smart Watch & Audio" },
-  { to: "/services", label: "Services" }
+  { to: "/services", label: "Services" },
+  { to: "/service-centers", label: "Service Centers" }
 ];
 
 function IconButton({ label, onClick, children }) {

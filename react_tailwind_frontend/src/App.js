@@ -13,6 +13,7 @@ import TechnicianDashboard from "./pages/TechnicianDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import DashboardRouter from "./pages/DashboardRouter";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import ServiceCenterLocatorPage from "./pages/ServiceCenterLocatorPage.jsx";
 
 // PUBLIC_INTERFACE
 function App() {
@@ -28,6 +29,7 @@ function App() {
 
           <Route path="/category/:slug" element={<PlaceholderPage title="Category" subtitle="Coming soon." />} />
           <Route path="/services" element={<PlaceholderPage title="Services" subtitle="Browse services in Book Repair." />} />
+          <Route path="/service-centers" element={<ServiceCenterLocatorPage />} />
           <Route path="/cart" element={<PlaceholderPage title="Cart" subtitle="Coming soon." />} />
 
           <Route element={<ProtectedRoute />}>

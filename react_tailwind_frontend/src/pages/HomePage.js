@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import PageLayout from "../components/PageLayout";
+import SupportHero from "../components/SupportHero";
 import ServiceProcess from "../components/ServiceProcess";
 
 const brandShowcase = [
@@ -301,6 +302,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <SupportHero />
 
       <ServiceProcess />
 

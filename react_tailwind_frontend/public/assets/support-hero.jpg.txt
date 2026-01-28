@@ -1,0 +1,6 @@
+Place a real image file at: public/assets/support-hero.jpg
+
+Required content:
+- Customer support staff showing a tablet to a couple (per design reference).
+Usage:
+- The SupportHero component loads this as /assets/support-hero.jpg

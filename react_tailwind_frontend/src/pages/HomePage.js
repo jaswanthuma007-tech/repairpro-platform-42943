@@ -80,11 +80,10 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         {/* Background image (blurred) */}
         <div
-          className="absolute inset-0 bg-center bg-cover scale-110 blur-sm"
+          className="absolute inset-0 bg-center bg-cover blur-sm hero-kenburns"
           style={{
-            backgroundImage:
-              // Showroom-style abstract backdrop (no external asset required)
-              "url(https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=2400&q=80)"
+            // Samsung-style service center / technician repairing smartphone image (local asset)
+            backgroundImage: "url(/assets/hero-service-center.jpg)"
           }}
           aria-hidden="true"
         />

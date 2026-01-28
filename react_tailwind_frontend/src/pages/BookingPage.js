@@ -4,7 +4,13 @@ import { useLocation } from "react-router-dom";
 import PageLayout from "../components/PageLayout";
 import BookingStepper from "../components/BookingStepper";
 import { useAuth } from "../contexts/AuthContext";
-import { fetchBrands, fetchDeviceModels, fetchServices, createRepairBooking } from "../api/booking";
+import {
+  fetchBrands,
+  fetchModelsByBrand,
+  fetchIssues,
+  fetchServices,
+  createRepairBooking
+} from "../api/booking";
 
 import StepBrand from "../components/booking/StepBrand";
 import StepModel from "../components/booking/StepModel";
@@ -25,7 +31,7 @@ function toUserFacingFetchError(err) {
 // PUBLIC_INTERFACE
 export default function BookingPage() {
   /** Samsung-style stepper-driven booking flow with backend catalog + Supabase insert. */
-  const { accessToken, user } = useAuth();
+  const { accessToken } = useAuth();
   const location = useLocation();
 
   const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -35,6 +41,8 @@ export default function BookingPage() {
   const [brands, setBrands] = useState([]);
   const [models, setModels] = useState([]);
   const [services, setServices] = useState([]);
+  const [issues, setIssues] = useState([]);
+  const [issueId, setIssueId] = useState("");
 
   const [stepIndex, setStepIndex] = useState(0);
 
@@ -106,12 +114,14 @@ export default function BookingPage() {
       if (!brandId) {
         setModels([]);
         setModelId("");
+        setIssues([]);
+        setIssueId("");
         return;
       }
 
       setLoadingModels(true);
       try {
-        const m = await fetchDeviceModels(brandId, accessToken);
+        const m = await fetchModelsByBrand(brandId, accessToken);
         if (!mounted) return;
         setModels(m || []);
         // Reset model selection if it no longer exists
@@ -128,6 +138,34 @@ export default function BookingPage() {
       mounted = false;
     };
   }, [brandId, accessToken]);
+
+  // Load issues when model changes (Step 3 catalog)
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      setErrorMsg("");
+      if (!modelId) {
+        setIssues([]);
+        setIssueId("");
+        return;
+      }
+
+      try {
+        const list = await fetchIssues(modelId, accessToken);
+        if (!mounted) return;
+        setIssues(list || []);
+        setIssueId((prev) => (list?.some((x) => x.id === prev) ? prev : ""));
+      } catch (e) {
+        if (!mounted) return;
+        setErrorMsg(toUserFacingFetchError(e));
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [modelId, accessToken]);
 
   function next() {
     setErrorMsg("");
@@ -215,9 +253,7 @@ export default function BookingPage() {
 
               {stepIndex === 1 && (
                 <div className="space-y-3">
-                  {loadingModels && (
-                    <div className="text-sm text-gray-600">Loading models…</div>
-                  )}
+                  {loadingModels && <div className="text-sm text-gray-600">Loading models…</div>}
                   <StepModel
                     brandSelected={Boolean(brandId)}
                     models={models}
@@ -231,7 +267,36 @@ export default function BookingPage() {
               )}
 
               {stepIndex === 2 && (
-                <StepIssue issueDescription={issueDescription} onChangeIssueDescription={setIssueDescription} />
+                <div className="space-y-3">
+                  {issues?.length > 0 && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <div className="text-sm font-medium text-gray-700">Issue (optional)</div>
+                        <select
+                          value={issueId}
+                          onChange={(e) => {
+                            const nextId = e.target.value;
+                            setIssueId(nextId);
+
+                            const match = issues.find((x) => x.id === nextId);
+                            // If user chooses a catalog issue, prefill the textarea (still editable).
+                            if (match?.title) setIssueDescription(match.title);
+                          }}
+                          className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                        >
+                          <option value="">Select issue…</option>
+                          {issues.map((i) => (
+                            <option key={i.id} value={i.id}>
+                              {i.title}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  )}
+
+                  <StepIssue issueDescription={issueDescription} onChangeIssueDescription={setIssueDescription} />
+                </div>
               )}
 
               {stepIndex === 3 && (

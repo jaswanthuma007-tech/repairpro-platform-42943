@@ -3,15 +3,18 @@ import { apiGet, apiPost } from "../lib/apiClient";
 /**
  * Booking API helpers for the multi-step booking wizard.
  *
- * Finalized wiring:
- * - Catalog reads from FastAPI:
- *   - GET /brands
- *   - GET /device-models?brand_id=...
- *   - GET /services
- * - Booking creation via FastAPI:
- *   - POST /repairs
+ * Required wiring (per user request):
+ * - Step 1: GET /brands
+ * - Step 2: GET /models?brand_id=...
+ * - Step 3: GET /issues
+ * - Submit: POST /repairs
  *
- * All requests should include `Authorization: Bearer <supabase_access_token>`.
+ * Note: The backend supports both:
+ * - GET /device-models?brand_id=... (canonical)
+ * - GET /models?brand=<uuid> or ?brand_id=<uuid> (alias)
+ *
+ * All requests should include `Authorization: Bearer <supabase_access_token>` unless you
+ * explicitly allow anon reads in Supabase RLS.
  */
 
 // PUBLIC_INTERFACE
@@ -21,10 +24,22 @@ export async function fetchBrands(accessToken) {
 }
 
 // PUBLIC_INTERFACE
-export async function fetchDeviceModels(brandId, accessToken) {
-  /** Fetch device models filtered by brand_id from the backend API. */
+export async function fetchModelsByBrand(brandId, accessToken) {
+  /** Fetch device models filtered by brand_id from the backend API (alias endpoint). */
   const qs = brandId ? `?brand_id=${encodeURIComponent(brandId)}` : "";
-  return apiGet(`/device-models${qs}`, accessToken);
+  return apiGet(`/models${qs}`, accessToken);
+}
+
+// PUBLIC_INTERFACE
+export async function fetchIssues(modelId, accessToken) {
+  /**
+   * Fetch issues for a device model.
+   *
+   * Backend supports `?model=<uuid>` (legacy) and `?device_model_id=<uuid>` (preferred).
+   * We use the preferred param.
+   */
+  if (!modelId) return [];
+  return apiGet(`/issues?device_model_id=${encodeURIComponent(modelId)}`, accessToken);
 }
 
 // PUBLIC_INTERFACE

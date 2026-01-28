@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import PageLayout from "../components/PageLayout";
+import ServiceProcess from "../components/ServiceProcess";
 
 const brandShowcase = [
   {
@@ -300,6 +301,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <ServiceProcess />
 
       {/* Mobile Brands Section (below hero) */}
       <motion.section

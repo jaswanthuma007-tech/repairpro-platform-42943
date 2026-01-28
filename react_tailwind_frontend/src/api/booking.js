@@ -1,13 +1,17 @@
-import { apiGet } from "../lib/apiClient";
-import { supabase } from "../lib/supabaseClient";
+import { apiGet, apiPost } from "../lib/apiClient";
 
 /**
  * Booking API helpers for the multi-step booking wizard.
  *
- * NOTE:
- * - Catalog reads prefer FastAPI endpoints (so JWT + RLS rules are consistently applied).
- * - Final booking is inserted directly into Supabase `repairs` table per requirements.
- *   (RLS must permit authenticated customer inserts.)
+ * Finalized wiring:
+ * - Catalog reads from FastAPI:
+ *   - GET /brands
+ *   - GET /device-models?brand_id=...
+ *   - GET /services
+ * - Booking creation via FastAPI:
+ *   - POST /repairs
+ *
+ * All requests should include `Authorization: Bearer <supabase_access_token>`.
  */
 
 // PUBLIC_INTERFACE
@@ -30,41 +34,23 @@ export async function fetchServices(accessToken) {
 }
 
 // PUBLIC_INTERFACE
-export async function createBookingInSupabase({
-  brandId,
-  modelId,
-  serviceId,
-  issueDescription,
-  address,
-  contactPhone,
-  customerId
-}) {
+export async function createRepairBooking(
+  { brandId, modelId, serviceId, issueDescription, address, contactPhone },
+  accessToken
+) {
   /**
-   * Insert a booking into Supabase `repairs` table.
+   * Create a booking through FastAPI.
    *
-   * Requirements:
-   * - Uses Supabase client for insert.
-   * - Requires an authenticated user session (handled by supabase client).
-   *
-   * Throws Error with a user-friendly message on failure.
+   * This avoids direct client inserts when RLS is strict, and centralizes validation/business rules.
    */
   const payload = {
-    customer_id: customerId,
-    technician_id: null,
     brand_id: brandId,
     device_model_id: modelId,
     service_id: serviceId,
     issue_description: issueDescription.trim(),
     address: address.trim(),
-    contact_phone: contactPhone.trim(),
-    status: "pending"
+    contact_phone: contactPhone.trim()
   };
 
-  const { data, error } = await supabase.from("repairs").insert(payload).select("*").single();
-
-  if (error) {
-    // Keep message short but actionable.
-    throw new Error(error.message || "Failed to create booking in Supabase.");
-  }
-  return data;
+  return apiPost("/repairs", payload, accessToken);
 }

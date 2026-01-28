@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import PageLayout from "../components/PageLayout";
 import BookingStepper from "../components/BookingStepper";
 import { useAuth } from "../contexts/AuthContext";
-import { fetchBrands, fetchDeviceModels, fetchServices, createBookingInSupabase } from "../api/booking";
+import { fetchBrands, fetchDeviceModels, fetchServices, createRepairBooking } from "../api/booking";
 
 import StepBrand from "../components/booking/StepBrand";
 import StepModel from "../components/booking/StepModel";
@@ -133,17 +133,19 @@ export default function BookingPage() {
     setErrorMsg("");
     setSubmitting(true);
     try {
-      if (!user?.id) throw new Error("You must be signed in to create a booking.");
+      if (!accessToken) throw new Error("You must be signed in to create a booking.");
 
-      const created = await createBookingInSupabase({
-        brandId,
-        modelId,
-        serviceId,
-        issueDescription,
-        address,
-        contactPhone,
-        customerId: user.id
-      });
+      const created = await createRepairBooking(
+        {
+          brandId,
+          modelId,
+          serviceId,
+          issueDescription,
+          address,
+          contactPhone
+        },
+        accessToken
+      );
 
       setResult(created);
     } catch (e) {
@@ -267,11 +269,12 @@ export default function BookingPage() {
             If you see <span className="font-semibold">Failed to fetch</span>, verify:
             <ul className="mt-1 list-disc pl-5 space-y-1">
               <li>
-                Frontend env: <span className="font-mono">REACT_APP_API_BASE</span> (preferred) or{" "}
-                <span className="font-mono">REACT_APP_BACKEND_URL</span>
+                Frontend env: <span className="font-mono">REACT_APP_API_BASE_URL</span> (authoritative), or{" "}
+                <span className="font-mono">REACT_APP_API_BASE</span> / <span className="font-mono">REACT_APP_BACKEND_URL</span>{" "}
+                (legacy)
               </li>
               <li>
-                Backend CORS: set <span className="font-mono">CORS_ALLOW_ORIGINS</span> to include this site origin.
+                Backend CORS: allow this site origin (e.g. <span className="font-mono">http://localhost:3000</span> in dev).
               </li>
             </ul>
           </div>

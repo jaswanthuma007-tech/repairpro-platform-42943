@@ -1,14 +1,17 @@
 /**
  * Minimal fetch wrapper for the FastAPI backend.
  *
- * Uses:
- * - REACT_APP_API_BASE (preferred)
- * - REACT_APP_BACKEND_URL (fallback)
+ * Uses (in priority order):
+ * - REACT_APP_API_BASE_URL (authoritative per project requirement)
+ * - REACT_APP_API_BASE (legacy)
+ * - REACT_APP_BACKEND_URL (legacy fallback)
  */
-const API_BASE = (process.env.REACT_APP_API_BASE || process.env.REACT_APP_BACKEND_URL || "").replace(
-  /\/$/,
+const API_BASE = (
+  process.env.REACT_APP_API_BASE_URL ||
+  process.env.REACT_APP_API_BASE ||
+  process.env.REACT_APP_BACKEND_URL ||
   ""
-);
+).replace(/\/$/, "");
 
 function buildHeaders(accessToken) {
   const headers = { "Content-Type": "application/json" };

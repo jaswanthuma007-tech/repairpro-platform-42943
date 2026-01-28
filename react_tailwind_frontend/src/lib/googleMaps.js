@@ -11,7 +11,7 @@ let loadingPromise = null;
 
 // PUBLIC_INTERFACE
 export function loadGoogleMaps() {
-  /** Loads the Google Maps JS API (with marker library). Resolves with `window.google.maps`. */
+  /** Loads the Google Maps JS API (with required libraries). Resolves with `window.google.maps`. */
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Google Maps can only be loaded in a browser environment."));
   }
@@ -40,6 +40,9 @@ export function loadGoogleMaps() {
       existing.addEventListener("error", () =>
         reject(new Error("Failed to load Google Maps script (existing tag)."))
       );
+
+      // If it already loaded but `load` didn't fire (cached), resolve synchronously.
+      if (window.google?.maps) resolve(window.google.maps);
       return;
     }
 
@@ -48,12 +51,13 @@ export function loadGoogleMaps() {
     script.async = true;
     script.defer = true;
 
-    // Use the standard JS API script, and request marker library for AdvancedMarkerElement when available.
-    // Note: We keep `libraries=marker` as required by the task.
+    // Use the standard JS API script, and request libraries required by the feature set:
+    // - marker: (Advanced) markers
+    // - places: Place search/autocomplete + enables parts of geocoding workflows
     const params = new URLSearchParams({
       key: apiKey,
       v: "weekly",
-      libraries: "marker"
+      libraries: "marker,places"
     });
 
     script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
@@ -65,7 +69,19 @@ export function loadGoogleMaps() {
       }
       resolve(window.google.maps);
     };
-    script.onerror = () => reject(new Error("Failed to load Google Maps script."));
+    script.onerror = () =>
+      reject(
+        new Error(
+          "Failed to load Google Maps script. Verify API key restrictions and that Maps JavaScript API is enabled."
+        )
+      );
+
+    // Hard timeout to avoid infinite skeleton when adblock/network blocks Google.
+    window.setTimeout(() => {
+      if (!window.google?.maps) {
+        reject(new Error("Timed out while loading Google Maps. Please try again."));
+      }
+    }, 15000);
 
     document.head.appendChild(script);
   });

@@ -186,14 +186,86 @@ export default function ServiceCenterLocatorPage() {
   const markersRef = useRef(new Map()); // id -> marker
   const googleRef = useRef(null);
 
+  const [mapReady, setMapReady] = useState(false);
+  const [mapLoadError, setMapLoadError] = useState("");
+
   const mapCenter = useMemo(() => {
+    // Task requirement: default center India.
     if (selectedCenter) return { lat: selectedCenter.lat, lng: selectedCenter.lng };
     if (userCoords) return userCoords;
-    // Default to Bengaluru.
-    return { lat: 12.9716, lng: 77.5946 };
+    return { lat: 20.5937, lng: 78.9629 };
   }, [selectedCenter, userCoords]);
 
-  async function runSearch({ preferGeolocation = false } = {}) {
+  const mapZoom = useMemo(() => {
+    // Task requirement: default zoom 6 for India.
+    if (selectedCenter) return 13;
+    if (userCoords) return 13;
+    return 6;
+  }, [selectedCenter, userCoords]);
+
+  const mockCenters = useMemo(
+    () => [
+      {
+        id: "mock-delhi",
+        name: "RepairPro Service Hub — Delhi",
+        category: activeCategory,
+        city: "New Delhi",
+        pincode: "110001",
+        lat: 28.6139,
+        lng: 77.209,
+        phone: "+91 90000 00001",
+        address: "Connaught Place, New Delhi"
+      },
+      {
+        id: "mock-mumbai",
+        name: "RepairPro Care — Mumbai",
+        category: activeCategory,
+        city: "Mumbai",
+        pincode: "400001",
+        lat: 18.9388,
+        lng: 72.8354,
+        phone: "+91 90000 00002",
+        address: "Fort, Mumbai"
+      },
+      {
+        id: "mock-bengaluru",
+        name: "RepairPro Authorized Center — Bengaluru",
+        category: activeCategory,
+        city: "Bengaluru",
+        pincode: "560001",
+        lat: 12.9716,
+        lng: 77.5946,
+        phone: "+91 90000 00003",
+        address: "MG Road, Bengaluru"
+      }
+    ],
+    [activeCategory]
+  );
+
+  async function geocodePincodeToCoords(pincode) {
+    const g = googleRef.current;
+    if (!g?.maps?.Geocoder) return null;
+
+    const geocoder = new g.maps.Geocoder();
+    return new Promise((resolve) => {
+      geocoder.geocode(
+        {
+          // India-specific geocode bias
+          address: `${pincode}, India`
+        },
+        (results, status) => {
+          if (status !== "OK" || !results?.[0]?.geometry?.location) {
+            resolve(null);
+            return;
+          }
+          const loc = results[0].geometry.location;
+          resolve({ lat: loc.lat(), lng: loc.lng() });
+        }
+      );
+    });
+  }
+
+  async function runSearch({ preferGeolocation = false, centerFromPincode = false } = {}) {
     setError("");
     setLoading(true);
 
@@ -205,8 +277,10 @@ export default function ServiceCenterLocatorPage() {
       const params = new URLSearchParams();
       params.set("category", activeCategory);
 
+      const isPin = Boolean(trimmed) && isLikelyPincode(trimmed);
+
       if (trimmed) {
-        if (isLikelyPincode(trimmed)) params.set("pincode", trimmed);
+        if (isPin) params.set("pincode", trimmed);
         else params.set("city", trimmed);
       }
 
@@ -217,7 +291,20 @@ export default function ServiceCenterLocatorPage() {
         params.set("radius", String(radiusKm));
       }
 
-      const data = await apiGet(`/service-centers?${params.toString()}`, accessToken);
+      let data = null;
+      try {
+        data = await apiGet(`/service-centers?${params.toString()}`, accessToken);
+      } catch (e) {
+        // Provide a more helpful CORS/network message.
+        const msg = e?.message || "";
+        if (msg.toLowerCase().includes("failed to fetch")) {
+          throw new Error(
+            "Failed to fetch service centers. Please verify REACT_APP_API_BASE_URL points to the backend and that backend CORS allows this frontend origin."
+          );
+        }
+        throw e;
+      }
+
       const raw = Array.isArray(data?.centers) ? data.centers : [];
 
       // Normalize API response fields (backend uses lat/lng, but user asked for latitude/longitude in Supabase doc).
@@ -230,8 +317,16 @@ export default function ServiceCenterLocatorPage() {
         }))
         .filter((c) => c.lat != null && c.lng != null);
 
-      setCenters(normalized);
-      setSelectedCenterId(normalized[0]?.id || null);
+      const finalCenters = normalized.length > 0 ? normalized : mockCenters;
+
+      setCenters(finalCenters);
+      setSelectedCenterId(finalCenters[0]?.id || null);
+
+      // Pincode search should center the map (even if results are mocked/empty).
+      if (centerFromPincode && isPin && mapReady) {
+        const coords = await geocodePincodeToCoords(trimmed);
+        if (coords) setUserCoords(coords);
+      }
     } catch (e) {
       setCenters([]);
       setSelectedCenterId(null);
@@ -251,8 +346,16 @@ export default function ServiceCenterLocatorPage() {
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserCoords(coords);
         setLoading(false);
+
+        // Pan/zoom immediately for responsive UX even before API returns.
+        if (mapRef.current) {
+          mapRef.current.panTo(coords);
+          mapRef.current.setZoom(13);
+        }
+
         runSearch({ preferGeolocation: true });
       },
       (err) => {
@@ -269,6 +372,9 @@ export default function ServiceCenterLocatorPage() {
 
     (async () => {
       try {
+        setMapLoadError("");
+        setMapReady(false);
+
         const maps = await loadGoogleMaps();
         if (cancelled) return;
 
@@ -280,7 +386,7 @@ export default function ServiceCenterLocatorPage() {
         if (!mapRef.current) {
           mapRef.current = new maps.Map(mapContainerRef.current, {
             center: mapCenter,
-            zoom: 11,
+            zoom: mapZoom,
             mapTypeId: mapType,
             fullscreenControl: false,
             streetViewControl: false,
@@ -288,9 +394,20 @@ export default function ServiceCenterLocatorPage() {
             clickableIcons: false
           });
         }
+
+        setMapReady(true);
       } catch (e) {
         if (cancelled) return;
-        setError(e?.message || "Failed to load Google Maps.");
+
+        const msg = e?.message || "Failed to load Google Maps.";
+        setMapLoadError(msg);
+
+        // If the key is missing, show the exact required message in the UI.
+        if (msg.toLowerCase().includes("missing google maps api key")) {
+          setError("Map unavailable. Please configure Google Maps API key.");
+        } else {
+          setError(msg);
+        }
       }
     })();
 
@@ -307,15 +424,16 @@ export default function ServiceCenterLocatorPage() {
   }, [mapType]);
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapReady) return;
     mapRef.current.panTo(mapCenter);
-  }, [mapCenter]);
+    mapRef.current.setZoom(mapZoom);
+  }, [mapCenter, mapZoom, mapReady]);
 
   // Update markers when centers change.
   useEffect(() => {
     const g = googleRef.current;
     const map = mapRef.current;
-    if (!g?.maps || !map) return;
+    if (!mapReady || !g?.maps || !map) return;
 
     const existing = markersRef.current;
 
@@ -339,11 +457,14 @@ export default function ServiceCenterLocatorPage() {
 
       marker.addListener("click", () => {
         setSelectedCenterId(c.id);
+        // Center and zoom to clicked marker for clearer UX.
+        map.panTo({ lat: c.lat, lng: c.lng });
+        map.setZoom(13);
       });
 
       existing.set(c.id, marker);
     });
-  }, [centers]);
+  }, [centers, mapReady]);
 
   // Initial search and refresh on category change.
   useEffect(() => {
@@ -391,7 +512,9 @@ export default function ServiceCenterLocatorPage() {
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
-            onClick={() => runSearch({ preferGeolocation: Boolean(userCoords) })}
+            onClick={() =>
+              runSearch({ preferGeolocation: Boolean(userCoords), centerFromPincode: true })
+            }
             className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white shadow hover:bg-blue-700 active:bg-blue-800 transition disabled:opacity-60"
             disabled={loading}
           >
@@ -410,7 +533,14 @@ export default function ServiceCenterLocatorPage() {
 
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
+            <div className="font-semibold">Error</div>
+            <div className="mt-1">{error}</div>
+            {String(error).toLowerCase().includes("api base url") && (
+              <div className="mt-2 text-xs text-red-700/80">
+                Tip: set <code className="font-mono">REACT_APP_API_BASE_URL</code> to your FastAPI
+                backend origin (e.g. <code className="font-mono">http://localhost:3001</code>).
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -545,6 +675,37 @@ export default function ServiceCenterLocatorPage() {
                 {/* Map container */}
                 <div className="relative aspect-[16/10] w-full bg-gray-50">
                   <div ref={mapContainerRef} className="absolute inset-0" />
+
+                  {/* Loading skeleton (map) */}
+                  {!mapReady && !mapLoadError && (
+                    <div className="absolute inset-0 z-0 animate-pulse bg-gradient-to-br from-gray-100 to-gray-50">
+                      <div className="absolute left-6 top-6 h-10 w-40 rounded-full bg-white/70" />
+                      <div className="absolute right-6 top-6 h-12 w-48 rounded-full bg-white/70" />
+                      <div className="absolute left-6 bottom-6 h-14 w-28 rounded-full bg-white/70" />
+                      <div className="absolute inset-x-6 bottom-24 h-4 rounded bg-white/60" />
+                      <div className="absolute inset-x-6 bottom-16 h-4 rounded bg-white/50" />
+                    </div>
+                  )}
+
+                  {/* Map unavailable overlay */}
+                  {(mapLoadError ||
+                    !process.env.REACT_APP_GOOGLE_MAPS_API_KEY ||
+                    error === "Map unavailable. Please configure Google Maps API key.") && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/85 backdrop-blur-sm p-6 text-center">
+                      <div className="max-w-md">
+                        <div className="text-sm font-semibold text-gray-900">Map unavailable</div>
+                        <div className="mt-2 text-sm text-gray-600">
+                          {!process.env.REACT_APP_GOOGLE_MAPS_API_KEY
+                            ? "Map unavailable. Please configure Google Maps API key."
+                            : mapLoadError || error}
+                        </div>
+                        <div className="mt-4 text-xs text-gray-500">
+                          Ensure Maps JavaScript API, Places API, and Geocoding API are enabled in
+                          Google Cloud, and verify the key restrictions.
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Styled map type toggle */}
                   <div className="absolute right-3 top-3 z-10 sm:right-6 sm:top-6">

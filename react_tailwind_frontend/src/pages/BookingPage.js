@@ -1,43 +1,34 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import PageLayout from "../components/PageLayout";
+import BookingStepper from "../components/BookingStepper";
 import { useAuth } from "../contexts/AuthContext";
-import { apiGet, apiPost } from "../lib/apiClient";
+import { fetchBrands, fetchDeviceModels, fetchServices, createBookingInSupabase } from "../api/booking";
+
+import StepBrand from "../components/booking/StepBrand";
+import StepModel from "../components/booking/StepModel";
+import StepIssue from "../components/booking/StepIssue";
+import StepAddress from "../components/booking/StepAddress";
+import StepConfirm from "../components/booking/StepConfirm";
 
 const steps = ["Brand", "Model", "Issue", "Address", "Confirm"];
 
-function Stepper({ stepIndex }) {
-  return (
-    <div className="flex items-center gap-3 overflow-x-auto pb-2">
-      {steps.map((s, idx) => {
-        const active = idx === stepIndex;
-        const done = idx < stepIndex;
-        return (
-          <div key={s} className="flex items-center gap-3">
-            <div
-              className={[
-                "flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition",
-                done ? "bg-blue-600 text-white" : active ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-600"
-              ].join(" ")}
-            >
-              {idx + 1}
-            </div>
-            <div className={active ? "text-sm font-semibold text-gray-900" : "text-sm text-gray-600"}>
-              {s}
-            </div>
-            {idx !== steps.length - 1 && <div className="h-px w-10 bg-gray-200" />}
-          </div>
-        );
-      })}
-    </div>
-  );
+function toUserFacingFetchError(err) {
+  const msg = err?.message || "";
+  // The requirement specifically calls out showing "Failed to fetch" styling for API failures.
+  // We keep message concise, but include details if present.
+  if (/failed to fetch/i.test(msg)) return "Failed to fetch. Check backend URL/CORS and try again.";
+  return msg || "Failed to fetch.";
 }
 
 // PUBLIC_INTERFACE
 export default function BookingPage() {
-  /** Stepper-driven booking flow that creates a repair via backend API. */
-  const { accessToken } = useAuth();
-  const [loading, setLoading] = useState(true);
+  /** Samsung-style stepper-driven booking flow with backend catalog + Supabase insert. */
+  const { accessToken, user } = useAuth();
+
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [brands, setBrands] = useState([]);
   const [models, setModels] = useState([]);
@@ -63,45 +54,58 @@ export default function BookingPage() {
     [services, serviceId]
   );
 
+  // Load brands + services (catalog)
   useEffect(() => {
     let mounted = true;
+
     (async () => {
-      setLoading(true);
+      setLoadingCatalog(true);
       setErrorMsg("");
       try {
-        const [b, s] = await Promise.all([apiGet("/brands", accessToken), apiGet("/services", accessToken)]);
+        const [b, s] = await Promise.all([fetchBrands(accessToken), fetchServices(accessToken)]);
         if (!mounted) return;
         setBrands(b || []);
         setServices(s || []);
       } catch (e) {
         if (!mounted) return;
-        setErrorMsg(e.message || "Failed to load catalog.");
+        setErrorMsg(toUserFacingFetchError(e));
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) setLoadingCatalog(false);
       }
     })();
+
     return () => {
       mounted = false;
     };
   }, [accessToken]);
 
+  // Load models when brand changes
   useEffect(() => {
     let mounted = true;
+
     (async () => {
+      setErrorMsg("");
       if (!brandId) {
         setModels([]);
         setModelId("");
         return;
       }
+
+      setLoadingModels(true);
       try {
-        const m = await apiGet(`/device-models?brand_id=${encodeURIComponent(brandId)}`, accessToken);
+        const m = await fetchDeviceModels(brandId, accessToken);
         if (!mounted) return;
         setModels(m || []);
+        // Reset model selection if it no longer exists
+        setModelId((prev) => (m?.some((x) => x.id === prev) ? prev : ""));
       } catch (e) {
         if (!mounted) return;
-        setErrorMsg(e.message || "Failed to load device models.");
+        setErrorMsg(toUserFacingFetchError(e));
+      } finally {
+        if (mounted) setLoadingModels(false);
       }
     })();
+
     return () => {
       mounted = false;
     };
@@ -111,6 +115,7 @@ export default function BookingPage() {
     setErrorMsg("");
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   }
+
   function prev() {
     setErrorMsg("");
     setStepIndex((i) => Math.max(i - 1, 0));
@@ -126,44 +131,51 @@ export default function BookingPage() {
 
   async function submitBooking() {
     setErrorMsg("");
+    setSubmitting(true);
     try {
-      const payload = {
-        brand_id: brandId,
-        device_model_id: modelId,
-        service_id: serviceId,
-        issue_description: issueDescription.trim(),
-        address: address.trim(),
-        contact_phone: contactPhone.trim()
-      };
-      const created = await apiPost("/repairs", payload, accessToken);
+      if (!user?.id) throw new Error("You must be signed in to create a booking.");
+
+      const created = await createBookingInSupabase({
+        brandId,
+        modelId,
+        serviceId,
+        issueDescription,
+        address,
+        contactPhone,
+        customerId: user.id
+      });
+
       setResult(created);
-      setStepIndex(steps.length - 1);
     } catch (e) {
-      setErrorMsg(e.message || "Booking failed.");
+      setErrorMsg(e?.message || "Booking failed.");
+    } finally {
+      setSubmitting(false);
     }
   }
+
+  const showConfirmButton = stepIndex === steps.length - 1;
 
   return (
     <PageLayout>
       <div className="mx-auto max-w-3xl">
         <div className="rounded-3xl bg-white p-6 shadow-samsung border border-gray-100">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Book a repair</h1>
-              <p className="mt-1 text-sm text-gray-600">Complete the steps below to create a booking.</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Book a repair</h1>
+            <p className="mt-1 text-sm text-gray-600">Complete the steps below to create a booking.</p>
           </div>
 
           <div className="mt-5">
-            <Stepper stepIndex={stepIndex} />
+            <BookingStepper stepIndex={stepIndex} />
           </div>
 
           {errorMsg && (
-            <div className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{errorMsg}</div>
+            <div className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-100">
+              {errorMsg}
+            </div>
           )}
 
-          {loading ? (
-            <div className="mt-6 text-sm text-gray-600">Loading catalog…</div>
+          {loadingCatalog ? (
+            <div className="mt-6 text-sm text-gray-600">Loading…</div>
           ) : (
             <motion.div
               key={stepIndex}
@@ -173,136 +185,49 @@ export default function BookingPage() {
               transition={{ duration: 0.25 }}
             >
               {stepIndex === 0 && (
-                <div className="space-y-3">
-                  <div className="text-sm font-semibold text-gray-900">Choose a brand</div>
-                  <select
-                    value={brandId}
-                    onChange={(e) => setBrandId(e.target.value)}
-                    className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                  >
-                    <option value="">Select brand…</option>
-                    {brands.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <StepBrand brands={brands} brandId={brandId} onChangeBrandId={setBrandId} />
               )}
 
               {stepIndex === 1 && (
-                <div className="space-y-4">
-                  <div className="text-sm font-semibold text-gray-900">Choose model + service</div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="block">
-                      <div className="text-sm font-medium text-gray-700">Model</div>
-                      <select
-                        value={modelId}
-                        onChange={(e) => setModelId(e.target.value)}
-                        className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                      >
-                        <option value="">Select model…</option>
-                        {models.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="block">
-                      <div className="text-sm font-medium text-gray-700">Service</div>
-                      <select
-                        value={serviceId}
-                        onChange={(e) => setServiceId(e.target.value)}
-                        className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                      >
-                        <option value="">Select service…</option>
-                        {services.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                            {s.base_price != null ? ` — $${s.base_price}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {stepIndex === 2 && (
                 <div className="space-y-3">
-                  <div className="text-sm font-semibold text-gray-900">Describe the issue</div>
-                  <textarea
-                    value={issueDescription}
-                    onChange={(e) => setIssueDescription(e.target.value)}
-                    rows={5}
-                    className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                    placeholder="Example: Screen flickers after drop. Touch input delayed…"
+                  {loadingModels && (
+                    <div className="text-sm text-gray-600">Loading models…</div>
+                  )}
+                  <StepModel
+                    brandSelected={Boolean(brandId)}
+                    models={models}
+                    services={services}
+                    modelId={modelId}
+                    serviceId={serviceId}
+                    onChangeModelId={setModelId}
+                    onChangeServiceId={setServiceId}
                   />
                 </div>
               )}
 
+              {stepIndex === 2 && (
+                <StepIssue issueDescription={issueDescription} onChangeIssueDescription={setIssueDescription} />
+              )}
+
               {stepIndex === 3 && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block sm:col-span-2">
-                    <div className="text-sm font-medium text-gray-700">Address</div>
-                    <input
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                      placeholder="Pickup / dropoff address"
-                    />
-                  </label>
-                  <label className="block sm:col-span-1">
-                    <div className="text-sm font-medium text-gray-700">Contact phone</div>
-                    <input
-                      value={contactPhone}
-                      onChange={(e) => setContactPhone(e.target.value)}
-                      className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                      placeholder="+1 555 123 4567"
-                    />
-                  </label>
-                </div>
+                <StepAddress
+                  address={address}
+                  contactPhone={contactPhone}
+                  onChangeAddress={setAddress}
+                  onChangeContactPhone={setContactPhone}
+                />
               )}
 
               {stepIndex === 4 && (
-                <div className="space-y-4">
-                  <div className="text-sm font-semibold text-gray-900">Confirm</div>
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div>
-                        <div className="text-gray-500">Brand</div>
-                        <div className="font-semibold text-gray-900">{selectedBrand?.name || "-"}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500">Model</div>
-                        <div className="font-semibold text-gray-900">{selectedModel?.name || "-"}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500">Service</div>
-                        <div className="font-semibold text-gray-900">{selectedService?.name || "-"}</div>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <div className="text-gray-500">Issue</div>
-                        <div className="font-semibold text-gray-900">{issueDescription || "-"}</div>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <div className="text-gray-500">Address</div>
-                        <div className="font-semibold text-gray-900">{address || "-"}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500">Phone</div>
-                        <div className="font-semibold text-gray-900">{contactPhone || "-"}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {result && (
-                    <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                      Booking created. Repair ID: <span className="font-semibold">{result.id}</span>
-                    </div>
-                  )}
-                </div>
+                <StepConfirm
+                  selectedBrand={selectedBrand}
+                  selectedModel={selectedModel}
+                  selectedService={selectedService}
+                  issueDescription={issueDescription}
+                  address={address}
+                  contactPhone={contactPhone}
+                  result={result}
+                />
               )}
             </motion.div>
           )}
@@ -311,17 +236,17 @@ export default function BookingPage() {
             <button
               type="button"
               onClick={prev}
-              disabled={stepIndex === 0}
+              disabled={stepIndex === 0 || submitting}
               className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50 transition"
             >
               Back
             </button>
 
-            {stepIndex < steps.length - 1 ? (
+            {!showConfirmButton ? (
               <button
                 type="button"
                 onClick={next}
-                disabled={!canProceed()}
+                disabled={!canProceed() || loadingCatalog || submitting}
                 className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 transition"
               >
                 Continue
@@ -330,12 +255,25 @@ export default function BookingPage() {
               <button
                 type="button"
                 onClick={submitBooking}
-                disabled={!canProceed() || Boolean(result)}
+                disabled={!canProceed() || Boolean(result) || submitting}
                 className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 transition"
               >
-                {result ? "Booked" : "Confirm booking"}
+                {result ? "Booked" : submitting ? "Booking…" : "Confirm booking"}
               </button>
             )}
+          </div>
+
+          <div className="mt-4 text-xs text-gray-500">
+            If you see <span className="font-semibold">Failed to fetch</span>, verify:
+            <ul className="mt-1 list-disc pl-5 space-y-1">
+              <li>
+                Frontend env: <span className="font-mono">REACT_APP_API_BASE</span> (preferred) or{" "}
+                <span className="font-mono">REACT_APP_BACKEND_URL</span>
+              </li>
+              <li>
+                Backend CORS: set <span className="font-mono">CORS_ALLOW_ORIGINS</span> to include this site origin.
+              </li>
+            </ul>
           </div>
         </div>
       </div>
